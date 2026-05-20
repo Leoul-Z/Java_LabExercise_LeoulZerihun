@@ -79,9 +79,14 @@ public class PokerUI extends JFrame {
         updateUIData();
 
         checkButton.addActionListener(e -> {
-            String winner = game.determineWinner();
-            resultLabel.setText(winner);
-            updateUIData();
+            boolean success = game.playerAction("CHECK_CALL", 0);
+            if (success) {
+                resultLabel.setText(game.getLastAction());
+                updateUIData();
+                if (!game.isRoundOver()) {
+                    triggerComputerTurn();
+                }
+            }
         });
 
         raiseButton.addActionListener(e -> {
@@ -93,37 +98,69 @@ public class PokerUI extends JFrame {
                     int amount = Integer.parseInt(input.trim());
                     if (amount <= 0) {
                         resultLabel.setText("Raise must be a positive number.");
-                    } else if (!game.playerRaise(amount)) {
+                    } else if (!game.playerAction("RAISE", amount)) {
                         resultLabel.setText("Not enough chips to raise " + amount + "!");
+                    } else {
+                        resultLabel.setText(game.getLastAction());
+                        updateUIData();
+                        if (!game.isRoundOver()) {
+                            triggerComputerTurn();
+                        }
                     }
                 } catch (NumberFormatException ex) {
                     resultLabel.setText("Invalid amount. Enter a number.");
                 }
             }
-            updateUIData();
         });
 
         foldButton.addActionListener(e -> {
-            game.playerFold();
-            resultLabel.setText("You Folded! Computer Wins.");
+            game.playerAction("FOLD", 0);
             updateUIData();
         });
 
         newRoundButton.addActionListener(e -> {
             game.startNewRound();
-            resultLabel.setText("New Round Started");
+            resultLabel.setText("New Round Started. Ante posted.");
             updateUIData();
         });
 
         setVisible(true);
     }
 
+    private void triggerComputerTurn() {
+        checkButton.setEnabled(false);
+        raiseButton.setEnabled(false);
+        foldButton.setEnabled(false);
+        resultLabel.setText("Computer is thinking...");
+
+        Timer timer = new Timer(1500, e -> {
+            game.computerAction();
+            resultLabel.setText(game.getLastAction());
+            updateUIData();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
     private void updateUIData() {
         boolean roundOver = game.isRoundOver();
+        boolean isPlayerTurn = game.isPlayerTurn();
 
-        checkButton.setEnabled(!roundOver);
-        raiseButton.setEnabled(!roundOver);
-        foldButton.setEnabled(!roundOver);
+        checkButton.setEnabled(!roundOver && isPlayerTurn);
+        raiseButton.setEnabled(!roundOver && isPlayerTurn);
+        foldButton.setEnabled(!roundOver && isPlayerTurn);
+
+        // Update Check/Call button text dynamically
+        if (!roundOver) {
+            int toCall = game.getCurrentBet() - game.getPlayerBet();
+            if (toCall > 0) {
+                checkButton.setText("Call (" + toCall + ")");
+            } else {
+                checkButton.setText("Check");
+            }
+        } else {
+            checkButton.setText("Check");
+        }
 
         playerCardPanel.removeAll();
         for (Card card : game.getPlayer().getHand()) {
@@ -141,8 +178,12 @@ public class PokerUI extends JFrame {
         }
 
         potLabel.setText("Pot: " + game.getPot());
-        playerChips.setText("Your Chips: " + game.getPlayer().getChips());
-        computerChips.setText("Computer Chips: " + game.getComputer().getChips());
+        playerChips.setText("Your Chips: " + game.getPlayer().getChips() + " (Bet: " + game.getPlayerBet() + ")");
+        computerChips.setText("Computer Chips: " + game.getComputer().getChips() + " (Bet: " + game.getComputerBet() + ")");
+
+        if (roundOver) {
+            resultLabel.setText(game.determineWinner());
+        }
 
         playerCardPanel.revalidate();
         playerCardPanel.repaint();

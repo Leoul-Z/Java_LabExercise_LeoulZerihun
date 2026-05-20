@@ -39,10 +39,8 @@ public class CardPanel extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         if (cardImage != null) {
-            // Draw the loaded PNG image
             g.drawImage(cardImage, 0, 0, CARD_WIDTH, CARD_HEIGHT, this);
         } else {
-            // Fallback: draw dynamically if image isn't found
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(Color.RED);
